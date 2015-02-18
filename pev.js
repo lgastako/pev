@@ -165,6 +165,8 @@ function PervasiveEventEmitter(storage) {
 
         var val = JSON.parse(storageEvent.newValue)
 
+        console.log(val)
+
         var event = val.event
         var details = val.details
 
