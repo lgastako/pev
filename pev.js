@@ -113,7 +113,7 @@ function PervasiveEventEmitter(storage) {
     var that = this
 
     function onStorageEvent(storageEvent) {
-        console.log("storageEvent => " + storageEvent)
+        console.log("storageEvent => " + JSON.stringify(storageEvent))
 
         if (storageEvent.key != EVENT_CHANNEL_KEY) return
         if (storageEvent.storageArea != that.storage) return
