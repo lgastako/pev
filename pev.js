@@ -163,20 +163,10 @@ function PervasiveEventEmitter(storage) {
 
         console.log("3")
 
-        var event = storageEvent.newValue.event
-        var rawDetails = storageEvent.newValue.details || null
+        var val = JSON.parse(storageEvent.newValue)
 
-        console.log("rawDetails => " + rawDetails)
-
-        var details = {}
-
-        if (rawDetails) {
-            try {
-                details = JSON.parse(storageEvent.newValue.details)
-            } catch (ex) {
-                details = {UNPARSEABLE: rawDetails}
-            }
-        }
+        var event = val.event
+        var details = val.details
 
         console.log("firing listener for event '" + event + "', details => "
                     + JSON.stringify(details))
