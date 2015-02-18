@@ -4,6 +4,7 @@
 // The events consist of a name and an object with any details.
 function PervasiveEventEmitter(storage) {
     var EVENT_CHANNEL_KEY = "__PEV__"
+    var EVENT_CLEARING_SIGIL = "__PEV_CLEAR_EVENT__"
 
     this.eventListeners = {}
     this.storage = storage || localStorage
@@ -77,14 +78,20 @@ function PervasiveEventEmitter(storage) {
             event: event,
             details: details
         }
+
         console.log("emit sticking in EVENT_CHANNEL_KEY(" + EVENT_CHANNEL_KEY + ") => "
                     + JSON.stringify(item))
+
         // This will cause listeners in other windows to fire
         this.storage.setItem(EVENT_CHANNEL_KEY, JSON.stringify(item))
+        this.storage.setItem(EVENT_CHANNEL_KEY, EVENT_CLEARING_SIGIL)
+        console.log("setItem(s) complete.")
+
         // This will fire them in the same window.
         console.log("SELF FIRING")
         this.fireListeners(event, details)
-        console.log("setItem complete.")
+        console.log("fireListeners complete.")
+
         return this
     }
 
@@ -135,8 +142,9 @@ function PervasiveEventEmitter(storage) {
     function onStorageEvent(storageEvent) {
         console.log("storageEvent => " + beautifyStorageEvent(storageEvent))
 
-        if (storageEvent.key != EVENT_CHANNEL_KEY) return
         if (storageEvent.storageArea != that.storage) return
+        if (storageEvent.key != EVENT_CHANNEL_KEY) return
+        if (storageEvent.value == EVENT_CLEARING_SIGIL) return
 
         var event = storageEvent.newValue.event
         var details = JSON.parse(storageEvent.newValue.details)
