@@ -2,11 +2,11 @@
 // events so that cross-window event subscriptions are possible.
 //
 // The events consist of a name and an object with any details.
-function PervasiveEventEmitter() {
+function PervasiveEventEmitter(storage) {
     var EVENT_CHANNEL_KEY = "__PEV__"
 
     this.eventListeners = {}
-    this.storage = localStorage
+    this.storage = storage || localStorage
 
     this._getListeners = function(event) {
         var eventListeners = this.eventListeners[event] || []
@@ -114,11 +114,16 @@ function PervasiveEventEmitter() {
 
     function onStorageEvent(storageEvent) {
         console.log("storageEvent => " + storageEvent)
-        if (storageEvent.key != EVENT_CHANNEL_KEY) return;
+
+        if (storageEvent.key != EVENT_CHANNEL_KEY) return
+        if (storageEvent.storageArea != that.storage) return
+
         var event = storageEvent.newValue.event
         var details = JSON.parse(storageEvent.newValue.details)
+
         console.log("firing listener for event '" + event + "', details => "
                     + JSON.stringify(details))
+
         that.fireListeners(event, details)
     }
 
