@@ -110,10 +110,30 @@ function PervasiveEventEmitter(storage) {
         this.many(1, event, cb)
     }
 
+    function beautifyStorageArea(storageArea) {
+        if (localStorage && storageArea == localStorage) {
+            return "localStorage"
+        } else if (sessionStorage && storageArea == sessionStorage) {
+            return "sessionStorage"
+        } else {
+            return "unknown"
+        }
+    }
+
+    function beautifyStorageEvent(storageEvent) {
+        return JSON.stringify({
+            key: storageEvent.key,
+            newValue: storageEvent.newValue,
+            oldValue: storageEvent.oldValue,
+            storageArea: beautifyStorageArea(storageEvent.storageArea),
+            url: storageEvent.url
+        })
+    }
+
     var that = this
 
     function onStorageEvent(storageEvent) {
-        console.log("storageEvent => " + JSON.stringify(storageEvent))
+        console.log("storageEvent => " + beautifyStorageEvent(storageEvent))
 
         if (storageEvent.key != EVENT_CHANNEL_KEY) return
         if (storageEvent.storageArea != that.storage) return
