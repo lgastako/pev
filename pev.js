@@ -164,11 +164,11 @@ function PervasiveEventEmitter(storage) {
         console.log("3")
 
         var event = storageEvent.newValue.event
-        var rawDetails = storageEvent.newValue.details
+        var rawDetails = storageEvent.newValue.details || null
 
         console.log("rawDetails => " + rawDetails)
 
-        var details = null
+        var details = {}
 
         if (rawDetails) {
             try {
