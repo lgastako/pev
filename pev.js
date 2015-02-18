@@ -167,13 +167,20 @@ function PervasiveEventEmitter(storage) {
             var event = storageEvent.newValue.event
             var details = JSON.parse(storageEvent.newValue.details)
 
-            console.log("firing listener for event '" + event + "', details => "
-                        + JSON.stringify(details))
+            // console.log("firing listener for event '" + event + "', details => "
+            //             + JSON.stringify(details))
+
+            console.log("firing listeners")
 
             that.fireListeners(event, details)
+
+            console.log("fired listeners")
+
         } catch (ex) {
             console.log(ex)
         }
+
+        console.log("the end")
     }
 
     window.addEventListener("storage", onStorageEvent, false)
