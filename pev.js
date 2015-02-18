@@ -163,22 +163,29 @@ function PervasiveEventEmitter(storage) {
 
         console.log("3")
 
-        try {
-            var event = storageEvent.newValue.event
-            var details = JSON.parse(storageEvent.newValue.details)
+        var event = storageEvent.newValue.event
+        var rawDetails = storageEvent.newValue.details
 
-            // console.log("firing listener for event '" + event + "', details => "
-            //             + JSON.stringify(details))
+        console.log("rawDetails => " + rawDetails)
 
-            console.log("firing listeners")
+        var details = null
 
-            that.fireListeners(event, details)
-
-            console.log("fired listeners")
-
-        } catch (ex) {
-            console.log(ex)
+        if (rawDetails) {
+            try {
+                details = JSON.parse(storageEvent.newValue.details)
+            } catch (ex) {
+                details = {UNPARSEABLE: rawDetails}
+            }
         }
+
+        console.log("firing listener for event '" + event + "', details => "
+                    + JSON.stringify(details))
+
+        console.log("firing listeners")
+
+        that.fireListeners(event, details)
+
+        console.log("fired listeners")
 
         console.log("the end")
     }
