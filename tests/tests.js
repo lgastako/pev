@@ -26,7 +26,9 @@ QUnit.test(
         example.on("foo", "bar")
         example.off("foo", "bar")
 
-        assert.deepEqual(example.eventListeners, {"foo":[]})
+        assert.deepEqual(example.eventListeners, {
+            "foo": []
+        })
     }
 )
 
