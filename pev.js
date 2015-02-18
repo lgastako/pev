@@ -142,9 +142,18 @@ function PervasiveEventEmitter(storage) {
     function onStorageEvent(storageEvent) {
         console.log("storageEvent => " + beautifyStorageEvent(storageEvent))
 
-        if (storageEvent.storageArea != that.storage) return
-        if (storageEvent.key != EVENT_CHANNEL_KEY) return
-        if (storageEvent.value == EVENT_CLEARING_SIGIL) return
+        if (storageEvent.storageArea != that.storage) {
+            console.log("bailing for wrong storage area")
+            return
+        }
+        if (storageEvent.key != EVENT_CHANNEL_KEY) {
+            console.log("bailing for wrong key")
+            return
+        }
+        if (storageEvent.value == EVENT_CLEARING_SIGIL) {
+            console.log("bailing for sigil")
+            return
+        }
 
         var event = storageEvent.newValue.event
         var details = JSON.parse(storageEvent.newValue.details)
