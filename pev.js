@@ -49,7 +49,6 @@ function PervasiveEventEmitter(storage) {
 
     this.eachListener = function(event, f) {
         var eventListeners = this._getListeners(event)
-        console.log("eachListener firing " + eventListeners.length + " listeners")
         eventListeners.forEach(function(listener) {
             try {
                 f(listener)
@@ -61,16 +60,13 @@ function PervasiveEventEmitter(storage) {
     }
 
     this.fireListeners = function(event, details) {
-        console.log("Firing listeners... " + this.listenerCount(event))
         this.eachListener(event, function(listener) {
-            console.log("Firing listener...")
             try {
                 listener(event, details)
             } catch (ex) {
                 console.log(ex)
             }
         })
-        console.log("Firing listeners...DONE")
     }
 
     this.emit = function(event, details) {
@@ -79,18 +75,12 @@ function PervasiveEventEmitter(storage) {
             details: details
         }
 
-        console.log("emit sticking in EVENT_CHANNEL_KEY(" + EVENT_CHANNEL_KEY + ") => "
-                    + JSON.stringify(item))
-
         // This will cause listeners in other windows to fire
         this.storage.setItem(EVENT_CHANNEL_KEY, JSON.stringify(item))
         this.storage.setItem(EVENT_CHANNEL_KEY, EVENT_CLEARING_SIGIL)
-        console.log("setItem(s) complete.")
 
         // This will fire them in the same window.
-        console.log("SELF FIRING")
         this.fireListeners(event, details)
-        console.log("fireListeners complete.")
 
         return this
     }
@@ -142,44 +132,16 @@ function PervasiveEventEmitter(storage) {
     function onStorageEvent(storageEvent) {
         console.log("storageEvent => " + beautifyStorageEvent(storageEvent))
 
-        if (storageEvent.storageArea != that.storage) {
-            console.log("bailing for wrong storage area")
-            return
-        }
-
-        console.log("1")
-
-        if (storageEvent.key != EVENT_CHANNEL_KEY) {
-            console.log("bailing for wrong key")
-            return
-        }
-
-        console.log("2")
-
-        if (storageEvent.value == EVENT_CLEARING_SIGIL) {
-            console.log("bailing for sigil")
-            return
-        }
-
-        console.log("3")
+        if (storageEvent.storageArea != that.storage) return
+        if (storageEvent.key != EVENT_CHANNEL_KEY) return
+        if (storageEvent.value == EVENT_CLEARING_SIGIL) return
 
         var val = JSON.parse(storageEvent.newValue)
-
-        console.log(val)
 
         var event = val.event
         var details = val.details
 
-        console.log("firing listener for event '" + event + "', details => "
-                    + JSON.stringify(details))
-
-        console.log("firing listeners")
-
         that.fireListeners(event, details)
-
-        console.log("fired listeners")
-
-        console.log("the end")
     }
 
     window.addEventListener("storage", onStorageEvent, false)
