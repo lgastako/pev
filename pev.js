@@ -130,8 +130,6 @@ function PervasiveEventEmitter(storage) {
     var that = this
 
     function onStorageEvent(storageEvent) {
-        console.log("storageEvent => " + beautifyStorageEvent(storageEvent))
-
         if (storageEvent.storageArea != that.storage) return
         if (storageEvent.key != EVENT_CHANNEL_KEY) return
         if (storageEvent.newValue == EVENT_CLEARING_SIGIL) return
