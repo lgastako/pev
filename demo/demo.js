@@ -7,8 +7,9 @@
 
     cmdline.addEventListener("keyup", function(event){
         if (event.keyCode == 13) {
-            var line = event.target.value;
+            var line = event.target.value
             p.emit("line", {line: line})
+            event.target.value = ""
         }
     });
 
