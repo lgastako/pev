@@ -136,12 +136,18 @@ function PervasiveEventEmitter(storage) {
         if (storageEvent.key != EVENT_CHANNEL_KEY) return
         if (storageEvent.value == EVENT_CLEARING_SIGIL) return
 
-        var val = JSON.parse(storageEvent.newValue)
+        try {
+            console.log("trying to parse:[" + storageEvent.newValue + "]")
 
-        var event = val.event
-        var details = val.details
+            var val = JSON.parse(storageEvent.newValue)
 
-        that.fireListeners(event, details)
+            var event = val.event
+            var details = val.details
+
+            that.fireListeners(event, details)
+        } catch (ex) {
+            console.log("onStorageEvent failure: " + ex)
+        }
     }
 
     window.addEventListener("storage", onStorageEvent, false)
