@@ -233,14 +233,9 @@ QUnit.test(
 
         function recordEvents(name) {
             return function(eventName, details) {
-                console.log("recordEvents cb for name(" + name +
-                            "), eventName=(" + eventName +
-                            "), details=(" + JSON.stringify(details) + ")")
                 var eventList = recordedEvents[name] || []
                 eventList.push(details)
                 recordedEvents[name] = eventList
-
-                console.log("recordedEvents is now => " + JSON.stringify(recordedEvents))
             }
         }
 

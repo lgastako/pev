@@ -1,4 +1,5 @@
 (function() {
+    var LOCAL_EVENT = "PEVLocalEvent"
 
     function EventEmitter(settings) {
         settings = settings || {}
@@ -41,7 +42,6 @@
         }
 
         this.eachListener = function(event, f) {
-            console.log("firing " + this.listenerCount(event) + " listeners for event: " + event)
             this._listeners(event).forEach(function(listener) {
                 try {
                     f(listener)
@@ -65,7 +65,6 @@
         }
 
         this.emit = function(event, details) {
-            console.log("emit(" + event + ", " + JSON.stringify(details) + ")")
             return this._fireListeners(event, details)
         }
 
@@ -94,7 +93,6 @@
     }
 
     function PervasiveEventEmitter(settings) {
-
         settings = settings || {}
 
         EventEmitter.call(this, settings)
@@ -108,33 +106,21 @@
 
         this.uid = settings.uid
 
-        this.eventListeners = {}
         this.storage = settings.storage || localStorage
 
-        this._listeners = function(event) {
-            var eventListeners = this.eventListeners[event] || []
-            this.eventListeners[event] = eventListeners
-            return eventListeners
-        }
-
-        this.removeAllListeners = function() {
-            this.eventListeners = {}
-            return this
-        }
+        var that = this
 
         this._fireSameWindowListeners = function(event, details) {
-            // This is how we had it.  This works for listeners listerally added to
-            // the same object, but not other (distinct) objects in the same window
-            // with the same uid (which should fire together).
-            // TODO: Fix.
-            details = details || {}
-            this.eachListener(event, function(listener) {
-                try {
-                    listener(event, details)
-                } catch (ex) {
-                    console.log(ex)
+            window.dispatchEvent(new CustomEvent(LOCAL_EVENT, {
+                detail: {
+                    pev: {
+                        uid: that.uid,
+                        event: event,
+                        details: details
+                    }
                 }
-            })
+            }))
+
             return this
         }
 
@@ -147,56 +133,69 @@
                 event: event,
                 details: details
             }
-            console.log(JSON.stringify(item))
             this.storage.setItem(EVENT_CHANNEL_KEY, JSON.stringify(item))
             this.storage.setItem(EVENT_CHANNEL_KEY, EVENT_CLEARING_SIGIL)
             return this
         }
 
         this.emit = function(event, details) {
-            console.log("emit(" + event + ", " + JSON.stringify(details) + ")")
-            console.log("EVENT_CHANNEL_KEY: " + EVENT_CHANNEL_KEY)
             this._fireOtherWindowListeners(event, details)
             this._fireSameWindowListeners(event, details)
             return this
         }
 
-        function beautifyStorageArea(storageArea) {
-            if (localStorage && storageArea == localStorage) {
-                return "localStorage"
-            } else if (sessionStorage && storageArea == sessionStorage) {
-                return "sessionStorage"
-            } else {
-                return "unknown"
+        function initRemoteEvents(that) {
+
+            function beautifyStorageArea(storageArea) {
+                if (localStorage && storageArea == localStorage) {
+                    return "localStorage"
+                } else if (sessionStorage && storageArea == sessionStorage) {
+                    return "sessionStorage"
+                } else {
+                    return "unknown"
+                }
             }
+
+            function beautifyStorageEvent(storageEvent) {
+                return JSON.stringify({
+                    key: storageEvent.key,
+                    newValue: storageEvent.newValue,
+                    oldValue: storageEvent.oldValue,
+                    storageArea: beautifyStorageArea(storageEvent.storageArea),
+                    url: storageEvent.url
+                })
+            }
+
+            function onStorageEvent(storageEvent) {
+                if (storageEvent.storageArea != that.storage) return
+                if (storageEvent.key != EVENT_CHANNEL_KEY) return
+                if (storageEvent.newValue == EVENT_CLEARING_SIGIL) return
+
+                var val = JSON.parse(storageEvent.newValue)
+
+                var event = val.event
+                var details = val.details
+
+                that.emit(event, details)
+            }
+
+            window.addEventListener("storage", onStorageEvent, false)
         }
 
-        function beautifyStorageEvent(storageEvent) {
-            return JSON.stringify({
-                key: storageEvent.key,
-                newValue: storageEvent.newValue,
-                oldValue: storageEvent.oldValue,
-                storageArea: beautifyStorageArea(storageEvent.storageArea),
-                url: storageEvent.url
+        function initLocalEvents(that) {
+            window.addEventListener(LOCAL_EVENT, function(evt) {
+                var event = evt.detail.pev.event
+                var uid = evt.detail.pev.uid
+                var details = evt.detail.pev.details
+
+                if (uid == that.uid) {
+                    that._fireListeners(event, details)
+                }
             })
         }
 
-        var that = this
-
-        function onStorageEvent(storageEvent) {
-            if (storageEvent.storageArea != that.storage) return
-            if (storageEvent.key != EVENT_CHANNEL_KEY) return
-            if (storageEvent.newValue == EVENT_CLEARING_SIGIL) return
-
-            var val = JSON.parse(storageEvent.newValue)
-
-            var event = val.event
-            var details = val.details
-
-            that.fireListeners(event, details)
-        }
-
-        window.addEventListener("storage", onStorageEvent, false)
+        initRemoteEvents(this)
+        initLocalEvents(this)
     }
 
     window.PEV = {
