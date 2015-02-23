@@ -68,6 +68,7 @@ function PervasiveEventEmitter(settings) {
     }
 
     this.fireListeners = function(event, details) {
+        details = details || {}
         this.eachListener(event, function(listener) {
             try {
                 listener(event, details)
@@ -75,24 +76,38 @@ function PervasiveEventEmitter(settings) {
                 console.log(ex)
             }
         })
+        return this
     }
 
-    this.emit = function(event, details) {
+    this.fireSameWindowListeners = function(event, details) {
+        // This is how we had it.  This works for listeners listerally added to
+        // the same object, but not other (distinct) objects in the same window
+        // with the same uid (which should fire together).
+        // TODO: Fix.
+        this.fireListeners(event, details)
+        return this
+    }
+
+    this.fireOtherWindowListeners = function(event, details) {
+        // We send our event and then a sigil to clear it, in case identical
+        // events are fired twice in a row.  If we go to a model where we
+        // always add a synthetic unique event ID then we could drop the song
+        // and dance with the sigil.
         var item = {
             event: event,
             details: details
         }
-
-        console.log("sending to EVENT_CHANNEL_KEY: " + EVENT_CHANNEL_KEY)
         console.log(JSON.stringify(item))
-
-        // This will cause listeners in other windows to fire
         this.storage.setItem(EVENT_CHANNEL_KEY, JSON.stringify(item))
         this.storage.setItem(EVENT_CHANNEL_KEY, EVENT_CLEARING_SIGIL)
+        return this
+    }
 
-        // This will fire them in the same window.
-        this.fireListeners(event, details)
-
+    this.emit = function(event, details) {
+        console.log("emit(" + event + ", " + JSON.stringify(details) + ")")
+        console.log("EVENT_CHANNEL_KEY: " + EVENT_CHANNEL_KEY)
+        this.fireOtherWindowListeners(event, details)
+        this.fireSameWindowListeners(event, details)
         return this
     }
 
@@ -116,6 +131,7 @@ function PervasiveEventEmitter(settings) {
 
     this.once = function(event, cb) {
         this.many(1, event, cb)
+        return this
     }
 
     function beautifyStorageArea(storageArea) {

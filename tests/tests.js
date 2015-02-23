@@ -2,6 +2,7 @@ function Example() {
     PervasiveEventEmitter.call(this)
 }
 
+
 QUnit.test(
     "'on' causes listener to be added.",
 
@@ -16,6 +17,7 @@ QUnit.test(
         })
     }
 )
+
 
 QUnit.test(
     "'off' causes listener to be removed.",
@@ -32,6 +34,7 @@ QUnit.test(
     }
 )
 
+
 QUnit.test(
     "'removeAllListeners' causes all listeners to be removed.",
 
@@ -46,6 +49,7 @@ QUnit.test(
         assert.deepEqual(example.eventListeners, {})
     }
 )
+
 
 QUnit.test(
     "'listeners' returns the list of listeners for any event",
@@ -178,6 +182,7 @@ QUnit.test(
     }
 )
 
+
 QUnit.test(
     "Events on private emitters are private (locally).",
 
@@ -260,3 +265,28 @@ QUnit.test(
 //         assert.ok(false, "Need to test from different windows.")
 //     }
 // )
+
+
+QUnit.test(
+    "Chainability of various PervasiveEventEmitter methods",
+
+    function(assert) {
+        var p = new PervasiveEventEmitter()
+        var cb = function() {}
+
+        assert.equal(p,
+                     p
+                     .on("foo", cb)
+                     .off("foo", cb)
+                     .eachListener(cb)
+                     .fireListeners("bar")
+                     .fireSameWindowListeners("bar")
+                     .fireOtherWindowListeners("bar")
+                     .emit("baz")
+                     .addListener("bim", cb)
+                     .removeListener("bim", cb)
+                     .once("bop", cb)
+                     .many(3, "bop", cb)
+                     .removeAllListeners())
+    }
+)
