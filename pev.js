@@ -2,12 +2,18 @@
 // events so that cross-window event subscriptions are possible.
 //
 // The events consist of a name and an object with any details.
-function PervasiveEventEmitter(storage) {
+function PervasiveEventEmitter(settings) {
     var EVENT_CHANNEL_KEY = "__PEV__"
     var EVENT_CLEARING_SIGIL = "__PEV_CLEAR_EVENT__"
 
+    settings = settings || {}
+
+    if (settings.uid) {
+        EVENT_CHANNEL_KEY = EVENT_CHANNEL_KEY + ":" + settings.uid
+    }
+
     this.eventListeners = {}
-    this.storage = storage || localStorage
+    this.storage = settings.storage || localStorage
 
     this._getListeners = function(event) {
         var eventListeners = this.eventListeners[event] || []
