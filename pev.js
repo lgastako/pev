@@ -12,6 +12,8 @@ function PervasiveEventEmitter(settings) {
         EVENT_CHANNEL_KEY = EVENT_CHANNEL_KEY + ":" + settings.uid
     }
 
+    this.uid = settings.uid
+
     this.eventListeners = {}
     this.storage = settings.storage || localStorage
 
@@ -80,6 +82,9 @@ function PervasiveEventEmitter(settings) {
             event: event,
             details: details
         }
+
+        console.log("sending to EVENT_CHANNEL_KEY: " + EVENT_CHANNEL_KEY)
+        console.log(JSON.stringify(item))
 
         // This will cause listeners in other windows to fire
         this.storage.setItem(EVENT_CHANNEL_KEY, JSON.stringify(item))

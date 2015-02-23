@@ -131,6 +131,7 @@ QUnit.test(
 
 QUnit.test(
     "'emit' causes listeners in the SAME WINDOW to receive events",
+
     function(assert) {
         var example = new Example()
         var foos = []
@@ -158,6 +159,98 @@ QUnit.test(
         }, 10)
     }
 )
+
+
+QUnit.test(
+    "Private event emitters known their own unique ID.",
+
+    function(assert) {
+        p1 = new PervasiveEventEmitter({
+            uid: "uid1"
+        })
+
+        p2 = new PervasiveEventEmitter({
+            uid: "uid2"
+        })
+
+        assert.equal(p1.uid, "uid1")
+        assert.equal(p2.uid, "uid2")
+    }
+)
+
+QUnit.test(
+    "Events on private emitters are private (locally).",
+
+    function(assert) {
+        var publicEvents = new PervasiveEventEmitter()
+        var privateEvents1 = new PervasiveEventEmitter({uid: "private-1"})
+        var privateEvents1a = new PervasiveEventEmitter({uid: "private-1"})
+        var privateEvents2 = new PervasiveEventEmitter({uid: "private-2"})
+
+        var recordedEvents = {}
+
+        function recordEvents(name) {
+            return function(eventName, details) {
+                console.log("recordEvents cb for name(" + name +
+                            "), eventName=(" + eventName +
+                            "), details=(" + JSON.stringify(details) + ")")
+                var eventList = recordedEvents[name] || []
+                eventList.push(details)
+                recordedEvents[name] = eventList
+
+                console.log("recordedEvents is now => " + JSON.stringify(recordedEvents))
+            }
+        }
+
+        publicEvents.on("foo", recordEvents("publicEvents"))
+        privateEvents1.on("foo", recordEvents("privateEvents1"))
+        privateEvents2.on("foo", recordEvents("privateEvents2"))
+        privateEvents1a.on("foo", recordEvents("privateEvents1a"))
+
+        publicEvents.emit("foo", {
+            target: "publicEvents"
+        })
+
+        privateEvents1.emit("foo", {
+            target: "privateEvents1"
+        })
+
+        privateEvents2.emit("foo", {
+            target: "privateEvents2"
+        })
+
+        privateEvents1a.emit("foo", {
+            target: "privateEvents1a"
+        })
+
+        assert.deepEqual(recordedEvents["publicEvents"], [
+            {target: "publicEvents"}
+        ])
+
+        assert.deepEqual(recordedEvents["privateEvents1"], [
+            {target: "privateEvents1"},
+            {target: "privateEvents1a"}
+        ])
+
+        assert.deepEqual(recordedEvents["privateEvents2"], [
+            {target: "privateEvents2"},
+        ])
+
+        assert.deepEqual(recordedEvents["privateEvents1a"], [
+            {target: "privateEvents1"},
+            {target: "privateEvents1a"}
+        ])
+    }
+)
+
+
+// QUnit.test(
+//     "Events on private emitters are private (across windows).",
+
+//     function(assert) {
+//         // TODO
+//     }
+// )
 
 // QUnit.test(
 //     "'emit' causes listeners in DIFFERENT WINDOWS to receive events",
