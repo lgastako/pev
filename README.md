@@ -1,7 +1,10 @@
 # PEV - Pervasive Event Emitter for Javascript
 
-PEV is similar to the [EventEmitter](http://smalljs.org/object/events/event-emitter/) made popular by [node.js](http://nodejs.org/api/events.html)
-except that it targets browsers and proxies all events on top of storage events so that they will be seen by all open windows on the same page.
+PEV is similar to the
+[EventEmitter](http://smalljs.org/object/events/event-emitter/) made popular by
+[node.js](http://nodejs.org/api/events.html) except that it targets browsers
+and proxies all events on top of storage events so that they will be seen by
+all open windows on the same page.
 
 Due to the cross-window nature of PEV's events, there are some differences from
 normal javascript events.  In PEV, all events consist of an event name, which
@@ -16,7 +19,6 @@ function cb(eventName, details) {
    // ...do something here...
 }
 ```
-
 
 Because handlers are added in other windows where there is a different object
 handling communication with local storage, by default all Pervasive Event
@@ -41,7 +43,6 @@ events.emit("my-event-2", {
 })
 ```
 
-
 If you want a "private" event emitter, you can pass a "uid" setting to the
 PervasiveEventEmitter constructor.  In this scenario only other event emitters
 with the same uid setting will share events.
@@ -51,7 +52,6 @@ var privateEvents = new PervasiveEventEmitter({
     uid: "my-private-emitter"
 })
 ```
-
 
 By default PervasiveEventEmitter uses localStorage but you can specify any
 object that implements the same interface/events as localStorage and
@@ -63,7 +63,6 @@ var privateEvents = new PervasiveEventEmitter({
 })
 ```
 
-
 You can also turn your own objects into PervasiveEventEmitters.
 
 ```javascript
@@ -71,7 +70,6 @@ function MyObject() {
     PervasiveEventEmitter.call(this)
 }
 ```
-
 
 The following combines everything to make a user defined object into an event
 emitter which uses session storage and who's events are unique to the class
