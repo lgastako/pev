@@ -7,3 +7,5 @@
    What you provide is a details object that gets stuck in a map under a
    "details" key next to additional auto-created metadata keys including
    "createdAt" with a (serialized of course) timestamp, and a unique ID.
+1. Refactor eachListener, _fireListeners etc into a good subclass relationship
+   based on ._listeners()

@@ -92,6 +92,11 @@
         }
     }
 
+    function TabEmitter(settings) {
+        settings = settings || {}
+        EventEmitter.call(this, settings)
+    }
+
     function PervasiveEventEmitter(settings) {
         settings = settings || {}
 
@@ -200,6 +205,7 @@
 
     window.PEV = {
         EventEmitter: EventEmitter,
+        TabEmitter: TabEmitter,
         PervasiveEventEmitter: PervasiveEventEmitter
     }
 
