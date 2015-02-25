@@ -8,7 +8,14 @@ demo:
 	python -mSimpleHTTPServer $(PORT)
 
 
+test:
+	open http://localhost:$(PORT)/tests/index.html
+	python -mSimpleHTTPServer $(PORT)
+
+
 d: demo
+t: test
 
 
-.PHONY: demo d
+.PHONY: demo test
+.PHONY: d t

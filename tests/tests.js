@@ -3,6 +3,7 @@ function bazListener() {}
 function bamListener() {}
 function bifListener() {}
 
+PONGS = []
 
 ALL_EMITTERS = [PEV.EventEmitter,
                 PEV.TabEmitter,
@@ -10,6 +11,27 @@ ALL_EMITTERS = [PEV.EventEmitter,
 
 TAB_AND_PERVASIVE_EMITTERS = [PEV.TabEmitter,
                               PEV.PervasiveEmitter]
+
+
+function setupOtherWindowTestMachinery() {
+    TAB_AND_PERVASIVE_EMITTERS.forEach(function(constructor) {
+        var emitter = new constructor()
+        emitter.on("pong", function(event) {
+            PONGS.push(event)
+        })
+    })
+}
+
+setupOtherWindowTestMachinery()
+
+// Copied from the emitter because it's not exposed publically there.
+function generateUUIDv4() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+        return v.toString(16);
+    })
+}
+
 
 function cleanupByConstructor(constructor, emitter) {
     if (constructor == PEV.TabEmitter) {
@@ -299,12 +321,22 @@ QUnit.test(
     }
 )
 
+function getPongTestEventIds() {
+    return PONGS.map(function(pong) { return pong.details.ping.details.testEventId })
+}
+
 
 QUnit.test(
     "Events from a regular EventEmitter do not fire outside of current window scope.",
 
     function(assert) {
-        assert.equal("Not implemented.", "Implemented")
+        var emitter = new PEV.EventEmitter()
+
+        var testEventId = generateUUIDv4()
+        emitter.emit("ping", {testEventId: testEventId})
+
+        var pongTestEventIds = getPongTestEventIds()
+        assert.equal(pongTestEventIds.indexOf(testEventId), -1)
     }
 )
 
@@ -313,7 +345,22 @@ QUnit.test(
     "Events from a TabEmitter or PervasiveEmitter fire in other frames within the same tab.",
 
     function(assert) {
-        assert.equal("Not implemented.", "Implemented")
+        TAB_AND_PERVASIVE_EMITTERS.forEach(function(constructor) {
+            var emitter = new constructor()
+
+            var testEventId = generateUUIDv4()
+            emitter.emit("ping", {testEventId: testEventId})
+
+            var pongTestEventIds = getPongTestEventIds()
+            console.log("Looking for testEventId: " + testEventId)
+            console.log("found " + PONGS.length + " pongs.")
+            console.log("PONGS => " + JSON.stringify(PONGS))
+            console.log("pongTestEventIds => " + pongTestEventIds)
+            console.log("found " + pongTestEventIds.length + " pongTestEventIds.")
+            console.log("indexOf: " + pongTestEventIds.indexOf(testEventId))
+            console.log("for constructor: " + constructor)
+            assert.notEqual(pongTestEventIds.indexOf(testEventId), -1)
+        })
     }
 )
 

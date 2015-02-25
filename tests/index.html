@@ -7,6 +7,10 @@
   <body>
     <div id="qunit"></div>
     <div id="qunit-fixture"></div>
+    <iframe width="0" height="0" src="other.html#sameTab"></iframe>
     <script src="../pev.js"></script>
     <script src="qunit.js"></script>
+    <script>
+      window.open("other.html#differentTab", "_blank")
+    </script>
     <script src="tests.js"></script>
