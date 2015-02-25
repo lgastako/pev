@@ -10,6 +10,11 @@ function ExamplePervasiveEmitter() {
     PEV.PervasiveEventEmitter.call(this)
 }
 
+function barListener() {}
+function bazListener() {}
+function bamListener() {}
+function bifListener() {}
+
 
 ALL_EMITTERS = [ExampleEmitter,
                 ExampleTabEmitter,
@@ -26,9 +31,9 @@ QUnit.test(
         ALL_EMITTERS.forEach(function(constructor) {
             var emitter = new constructor()
 
-            emitter.on("foo", "bar")
+            emitter.on("foo", barListener)
 
-            assert.deepEqual(emitter.listeners("foo"), ["bar"])
+            assert.deepEqual(emitter.listeners("foo"), [barListener])
         })
     }
 )
@@ -41,14 +46,13 @@ QUnit.test(
         ALL_EMITTERS.forEach(function(constructor) {
             var emitter = new constructor()
 
-            emitter.on("foo", "bar")
-            emitter.off("foo", "bar")
+            emitter.on("foo", barListener)
+            emitter.off("foo", barListener)
 
             assert.deepEqual(emitter.listeners("foo"), [])
         })
     }
 )
-
 
 QUnit.test(
     "'removeAllListeners' causes all listeners to be removed in all emitters.",
@@ -57,8 +61,8 @@ QUnit.test(
         ALL_EMITTERS.forEach(function(constructor) {
             var emitter = new constructor()
 
-            emitter.on("foo", "bar")
-            emitter.on("baz", "bif")
+            emitter.on("foo", barListener)
+            emitter.on("baz", bifListener)
 
             emitter.removeAllListeners()
 
@@ -76,12 +80,12 @@ QUnit.test(
         ALL_EMITTERS.forEach(function(constructor) {
             var emitter = new constructor()
 
-            emitter.on("foo", "bar")
-            emitter.on("foo", "baz")
-            emitter.on("bif", "bam")
+            emitter.on("foo", barListener)
+            emitter.on("foo", bazListener)
+            emitter.on("bif", bamListener)
 
-            assert.deepEqual(emitter.listeners("foo"), ["bar", "baz"])
-            assert.deepEqual(emitter.listeners("bif"), ["bam"])
+            assert.deepEqual(emitter.listeners("foo"), [barListener, bazListener])
+            assert.deepEqual(emitter.listeners("bif"), [bamListener])
         })
     }
 )
@@ -94,9 +98,9 @@ QUnit.test(
         ALL_EMITTERS.forEach(function(constructor) {
             var emitter = new constructor()
 
-            emitter.on("foo", "bar")
-            emitter.on("foo", "baz")
-            emitter.on("bif", "bam")
+            emitter.on("foo", barListener)
+            emitter.on("foo", bazListener)
+            emitter.on("bif", bamListener)
 
             assert.equal(emitter.listenerCount("foo"), 2)
             assert.equal(emitter.listenerCount("bif"), 1)

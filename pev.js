@@ -1,15 +1,21 @@
 (function() {
     var LOCAL_EVENT = "PEVLocalEvent"
+    var LISTENER_BAG_KEY = "__pevTabEmitterListeners"
 
     function EventEmitter(settings) {
         settings = settings || {}
 
-        var eventListenersByEvent = {}
+        var _eventListenersByEvent = {}
+
+        this._listenerBag = function() {
+            return _eventListenersByEvent
+        }
 
         this._listeners = function(event) {
-            var eventListeners = eventListenersByEvent[event] || []
-            eventListenersByEvent[event] = eventListeners
-            return eventListeners
+            var listenerBag = this._listenerBag()
+            var listeners = listenerBag[event] || []
+            listenerBag[event] = listeners
+            return listeners
         }
 
         this.on = function(event, cb) {
@@ -27,7 +33,7 @@
         }
 
         this.removeAllListeners = function() {
-            eventListenersByEvent = {}
+            _eventListenersByEvent = {}
             return this
         }
 
@@ -46,6 +52,10 @@
                 try {
                     f(listener)
                 } catch (ex) {
+                    // var callerLine = (new Error).stack.split("\n")[4]
+                    console.log(new Error().stack)
+                    console.log("Error on listener: " + listener)
+                    // console.log("Exception at line " + callerLine, ex)
                     console.log(ex)
                 }
             })
@@ -55,11 +65,7 @@
         this._fireListeners = function(event, details) {
             details = details || {}
             this.eachListener(event, function(listener) {
-                try {
-                    listener(event, details)
-                } catch (ex) {
-                    console.log(ex)
-                }
+                listener(event, details)
             })
             return this
         }
@@ -95,6 +101,37 @@
     function TabEmitter(settings) {
         settings = settings || {}
         EventEmitter.call(this, settings)
+
+        var tabWindow = null
+
+        this._findTabWindow = function() {
+            if (this._tabWindow) {
+                return this._tabWindow
+            }
+
+            var tabWindow = window
+
+            while (tabWindow != tabWindow.parent) {
+                tabWindow = tabWindow.parent
+            }
+
+            this._tabWindow = tabWindow
+
+            return tabWindow
+        }
+
+        this._listenerBag = function() {
+            var tabWindow = this._findTabWindow()
+            var listenerBag = tabWindow[LISTENER_BAG_KEY] || {}
+            tabWindow[LISTENER_BAG_KEY] = listenerBag
+            return listenerBag
+        }
+
+        this.removeAllListeners = function() {
+            var tabWindow = this._findTabWindow()
+            tabWindow[LISTENER_BAG_KEY] = {}
+            return this
+        }
     }
 
     function PervasiveEventEmitter(settings) {
