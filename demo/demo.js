@@ -3,7 +3,7 @@
     var output = document.getElementById("output")
     var cmdline = document.getElementById("cmdline")
 
-    var p = new PervasiveEventEmitter()
+    var p = new PEV.PervasiveEmitter()
 
     cmdline.addEventListener("keyup", function(event){
         if (event.keyCode == 13) {

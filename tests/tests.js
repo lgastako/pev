@@ -7,7 +7,7 @@ function ExampleTabEmitter() {
 }
 
 function ExamplePervasiveEmitter() {
-    PEV.PervasiveEventEmitter.call(this)
+    PEV.PervasiveEmitter.call(this)
 }
 
 function barListener() {}
@@ -214,7 +214,7 @@ QUnit.test(
 
 
 QUnit.test(
-    "Events from a TabEmitter or PervasiveEventEmitter fire in other frames within the same tab.",
+    "Events from a TabEmitter or PervasiveEmitter fire in other frames within the same tab.",
 
     function(assert) {
         assert.equal("Not implemented.", "Implemented")
@@ -232,7 +232,7 @@ QUnit.test(
 
 
 QUnit.test(
-    "Events from a PervasiveEventEmitter do fire outside of current tab scope.",
+    "Events from a PervasiveEmitter do fire outside of current tab scope.",
 
     function(assert) {
         assert.equal("Not implemented.", "Implemented")
