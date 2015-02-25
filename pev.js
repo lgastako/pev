@@ -2,6 +2,13 @@
     var LOCAL_EVENT = "PEVLocalEvent"
     var LISTENER_BAG_KEY = "__pevTabEmitterListeners"
 
+    function generateUUIDv4() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+            return v.toString(16);
+        })
+    }
+
     function EventEmitter(settings) {
         settings = settings || {}
 
@@ -11,20 +18,24 @@
             return _eventListenersByEvent
         }
 
-        this._listeners = function(event) {
+        this._listeners = function(eventName) {
             var listenerBag = this._listenerBag()
-            var listeners = listenerBag[event] || []
-            listenerBag[event] = listeners
+            var listeners = listenerBag[eventName] || []
+            listenerBag[eventName] = listeners
             return listeners
         }
 
-        this.on = function(event, cb) {
-            this._listeners(event).push(cb)
+        this.on = function(eventName, cb) {
+            var listeners = this._listeners(eventName)
+            listeners.push(cb)
+            // console.log("added listener for eventName=> " + eventName + ", cb => " + cb)
+            // console.log("listenerBag is now => " + JSON.stringify(this._listenerBag()))
+            // console.log("listenerCount('" + eventName + "') => " + this.listenerCount(eventName))
             return this
         }
 
-        this.off = function(event, cb) {
-            var listeners = this._listeners(event)
+        this.off = function(eventName, cb) {
+            var listeners = this._listeners(eventName)
             var index = listeners.indexOf(cb)
             if (index > -1) {
                 listeners.splice(index, 1)
@@ -37,63 +48,95 @@
             return this
         }
 
-        this.listeners = function(event) {
+        this.listeners = function(eventName) {
             // Clone the array so people can't mutate our copy
-            return this._listeners(event).splice(0)
+            return this._listeners(eventName).splice(0)
         }
 
-        this.listenerCount = function(event) {
-            // Use the internal _listeners(event) to avoid an array copy
-            return this._listeners(event).length
+        this.listenerCount = function(eventName) {
+            // Use the internal _listeners(eventName) to avoid an array copy
+            return this._listeners(eventName).length
         }
 
-        this.eachListener = function(event, f) {
-            this._listeners(event).forEach(function(listener) {
+        // var aborted = false
+        // var count = 0
+
+        this._fireListeners = function(event) {
+            // if (aborted) return
+
+            // console.log("_fireListeners")
+            // console.log(" count => " + count)
+
+            var listeners = this._listeners(event.eventName)
+
+            // console.log("firing " + listeners.length + " listeners")
+
+            listeners.forEach(function(listener) {
+                // if (aborted) return
+
                 try {
-                    f(listener)
+                    listener(event)
                 } catch (ex) {
-                    // var callerLine = (new Error).stack.split("\n")[4]
-                    console.log(new Error().stack)
-                    console.log("Error on listener: " + listener)
-                    // console.log("Exception at line " + callerLine, ex)
-                    console.log(ex)
+                    console.log("aborted: %o", ex)
+                    aborted = true
                 }
+
             })
+
+            // console.log("ok fired them")
+
+            // if (count++ > 100) {
+            //     console.log("aborted on count")
+            //     aborted = true
+            // }
+
             return this
         }
 
-        this._fireListeners = function(event, details) {
+        this._createEvent = function(eventName, details) {
             details = details || {}
-            this.eachListener(event, function(listener) {
-                listener(event, details)
-            })
-            return this
+            var now = new Date()
+            var eventId = generateUUIDv4()
+            var event = {
+                type: "simpleEvent",
+                eventId: eventId,
+                eventName: eventName,
+                details: details,
+                createdAtUnix: now.getTime(),
+                createdAtIso: now.toISOString()
+            }
+            return event
         }
 
-        this.emit = function(event, details) {
-            return this._fireListeners(event, details)
+        this.emit = function(eventName, details) {
+            var event = this._createEvent(eventName, details)
+            try {
+                return this._fireListeners(event)
+            } catch (ex) {
+                console.log(ex)
+            }
         }
 
         this.addListener = this.on
         this.removeListener = this.off
 
-        this.many = function(n, event, cb) {
+        this.many = function(n, eventName, cb) {
             var that = this
 
             function listener() {
                 if (--n <= 0) {
-                    that.off(event, listener)
+                    that.off(eventName, listener)
                 }
                 cb.apply(this, arguments)
             }
 
-            this.on(event, listener)
+            that.on(eventName, listener)
 
             return that
         }
 
-        this.once = function(event, cb) {
-            this.many(1, event, cb)
+        this.once = function(eventName, cb) {
+            this.many(1, eventName, cb)
             return this
         }
     }
@@ -102,11 +145,11 @@
         settings = settings || {}
         EventEmitter.call(this, settings)
 
-        var tabWindow = null
+        var _cachedTabWindow = null
 
-        this._findTabWindow = function() {
-            if (this._tabWindow) {
-                return this._tabWindow
+        this._tabWindow = function() {
+            if (_cachedTabWindow) {
+                return _cachedTabWindow
             }
 
             var tabWindow = window
@@ -115,20 +158,20 @@
                 tabWindow = tabWindow.parent
             }
 
-            this._tabWindow = tabWindow
+            _cachedTabWindow = tabWindow
 
             return tabWindow
         }
 
         this._listenerBag = function() {
-            var tabWindow = this._findTabWindow()
+            var tabWindow = this._tabWindow()
             var listenerBag = tabWindow[LISTENER_BAG_KEY] || {}
             tabWindow[LISTENER_BAG_KEY] = listenerBag
             return listenerBag
         }
 
         this.removeAllListeners = function() {
-            var tabWindow = this._findTabWindow()
+            var tabWindow = this._tabWindow()
             tabWindow[LISTENER_BAG_KEY] = {}
             return this
         }
@@ -142,47 +185,45 @@
         var EVENT_CHANNEL_KEY = "__PEV__"
         var EVENT_CLEARING_SIGIL = "__PEV_CLEAR_EVENT__"
 
-        if (settings.uid) {
-            EVENT_CHANNEL_KEY = EVENT_CHANNEL_KEY + ":" + settings.uid
-        }
+        this.uid = settings.uid || null
 
-        this.uid = settings.uid
+        if (this.uid) {
+            EVENT_CHANNEL_KEY = EVENT_CHANNEL_KEY + ":" + this.uid
+        }
 
         this.storage = settings.storage || localStorage
 
         var that = this
 
-        this._fireSameWindowListeners = function(event, details) {
+        this._fireSameWindowListeners = function(event) {
+            // console.log("_fireSameWindowListeners -> _createEvent")
+
             window.dispatchEvent(new CustomEvent(LOCAL_EVENT, {
                 detail: {
-                    pev: {
-                        uid: that.uid,
-                        event: event,
-                        details: details
-                    }
+                    uid: that.uid,
+                    simpleEvent: event
                 }
             }))
 
             return this
         }
 
-        this._fireOtherWindowListeners = function(event, details) {
+        this._fireOtherWindowListeners = function(event) {
             // We send our event and then a sigil to clear it, in case identical
             // events are fired twice in a row.  If we go to a model where we
             // always add a synthetic unique event ID then we could drop the song
             // and dance with the sigil.
-            var item = {
-                event: event,
-                details: details
-            }
-            this.storage.setItem(EVENT_CHANNEL_KEY, JSON.stringify(item))
+            // console.log("_fireOtherWindowListeners: Created event obj: " + JSON.stringify(event))
+            this.storage.setItem(EVENT_CHANNEL_KEY, JSON.stringify(event))
             this.storage.setItem(EVENT_CHANNEL_KEY, EVENT_CLEARING_SIGIL)
+            // console.log("item set and cleared!")
             return this
         }
 
-        this.emit = function(event, details) {
-            this._fireOtherWindowListeners(event, details)
-            this._fireSameWindowListeners(event, details)
+        this.emit = function(eventName, details) {
+            var event = this._createEvent(eventName, details)
+            this._fireOtherWindowListeners(event)
+            this._fireSameWindowListeners(event)
             return this
         }
 
@@ -215,23 +256,42 @@
 
                 var val = JSON.parse(storageEvent.newValue)
 
-                var event = val.event
-                var details = val.details
+                // console.log("ON STORAGE EVENT!")
+                // console.log(val)
 
-                that.emit(event, details)
+                that._fireListeners(event)
             }
 
             window.addEventListener("storage", onStorageEvent, false)
         }
 
-        function initLocalEvents(that) {
-            window.addEventListener(LOCAL_EVENT, function(evt) {
-                var event = evt.detail.pev.event
-                var uid = evt.detail.pev.uid
-                var details = evt.detail.pev.details
+        var count = 0
 
-                if (uid == that.uid) {
-                    that._fireListeners(event, details)
+        function initLocalEvents(that) {
+            // console.log("initializing local events with uid: " + that.uid)
+
+            window.addEventListener(LOCAL_EVENT, function(evt) {
+                window.le = evt
+                if (count++ > 10) return
+                // console.log("LOCAL_EVENT: %o", evt)
+
+                if (!evt.detail.simpleEvent) {
+                    consoe.log("bailing because no simpleEvent")
+                    return
+                }
+                var eventUidDefined = evt.detail.hasOwnProperty("uid")
+                var eventUid = evt.detail.uid
+                var ourUid = that.uid
+
+                // console.log("compared eventUid (" + eventUid + ") and ourUid (" + ourUid + ")")
+                // console.log("eventUidDefined: " + eventUidDefined)
+                if (eventUidDefined && eventUid == ourUid) {
+                    var event = evt.detail.simpleEvent
+                    // console.log("initLocalEvents->that._fireListeners cause uid " + evt.detail.uid)
+                    // console.log("firing on event: " + JSON.stringify(event))
+                    that._fireListeners(event)
+                // } else {
+                //     console.log("disregarding mismatched uids (" + ourUid + " vs. " + eventUid + ")")
                 }
             })
         }
