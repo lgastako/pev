@@ -1,6 +1,5 @@
 # TODO
 
-1. Implement TabEmitter
 1. Rename PervasiveEventEmitter to PervasiveEmitter
 1. Update documentation to reflect new design.
 1. Convert events to new style:
@@ -9,3 +8,6 @@
    "createdAt" with a (serialized of course) timestamp, and a unique ID.
 1. Refactor eachListener, _fireListeners etc into a good subclass relationship
    based on ._listeners()
+1. Tests for other windows (can we window.open another html for co-op purposes
+   or does localhost interfere with that?  If so should we just
+   SimpleHTTPServer the tests?)
