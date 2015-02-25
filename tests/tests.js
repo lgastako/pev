@@ -1,27 +1,24 @@
-function ExampleEmitter() {
-    PEV.EventEmitter.call(this)
-}
-
-function ExampleTabEmitter() {
-    PEV.TabEmitter.call(this)
-}
-
-function ExamplePervasiveEmitter() {
-    PEV.PervasiveEmitter.call(this)
-}
-
 function barListener() {}
 function bazListener() {}
 function bamListener() {}
 function bifListener() {}
 
 
-ALL_EMITTERS = [ExampleEmitter,
-                ExampleTabEmitter,
-                ExamplePervasiveEmitter]
+ALL_EMITTERS = [PEV.EventEmitter,
+                PEV.TabEmitter,
+                PEV.PervasiveEmitter]
 
-TAB_AND_PERVASIVE_EMITTERS = [ExampleTabEmitter,
-                              ExamplePervasiveEmitter]
+TAB_AND_PERVASIVE_EMITTERS = [PEV.TabEmitter,
+                              PEV.PervasiveEmitter]
+
+function cleanupByConstructor(constructor, emitter) {
+    if (constructor == PEV.TabEmitter) {
+        var tabWindow = emitter._tabWindow()
+        if (tabWindow) {
+            delete tabWindow.__pevTabEmitterListeners
+        }
+    }
+}
 
 
 QUnit.test(
@@ -68,6 +65,8 @@ QUnit.test(
 
             assert.deepEqual(emitter.listeners("foo"), [])
             assert.deepEqual(emitter.listeners("bar"), [])
+
+            cleanupByConstructor(constructor, emitter)
         })
     }
 )
@@ -86,6 +85,8 @@ QUnit.test(
 
             assert.deepEqual(emitter.listeners("foo"), [barListener, bazListener])
             assert.deepEqual(emitter.listeners("bif"), [bamListener])
+
+            cleanupByConstructor(constructor, emitter)
         })
     }
 )
@@ -105,6 +106,8 @@ QUnit.test(
             assert.equal(emitter.listenerCount("foo"), 2)
             assert.equal(emitter.listenerCount("bif"), 1)
             assert.equal(emitter.listenerCount("baz"), 0)
+
+            cleanupByConstructor(constructor, emitter)
         })
     }
 )
@@ -114,7 +117,9 @@ QUnit.test(
     "'once' fires once and only once in the local window for all emitters.",
 
     function(assert) {
-        ALL_EMITTERS.forEach(function(constructor) {
+        var emitters = ALL_EMITTERS
+        emitters = [PEV.EventEmitter]
+        emitters.forEach(function(constructor) {
             var emitter = new constructor()
             var calls = 0
 
@@ -130,6 +135,8 @@ QUnit.test(
 
             emitter.emit("foo")
             assert.equal(calls, 1)
+
+            cleanupByConstructor(constructor, emitter)
         })
     }
 )
@@ -153,13 +160,15 @@ QUnit.test(
             })
 
             emitter.emit("foo")
-            assert.equal(cname + 1, cname + calls)
+            assert.equal(cname + calls, cname + "1")
 
             emitter.emit("foo")
-            assert.equal(cname + 2, cname + calls)
+            assert.equal(cname + calls, cname + "2")
 
             emitter.emit("foo")
-            assert.equal(cname + 2, cname + calls)
+            assert.equal(cname + calls, cname + "2")
+
+            cleanupByConstructor(constructor, emitter)
         })
     }
 )
@@ -173,32 +182,119 @@ QUnit.test(
             var emitter = new constructor()
             var cb = function() {}
 
-            assert.equal(emitter,
-                         emitter
+            assert.equal(emitter
                          .on("foo", cb)
                          .off("foo", cb)
-                         .eachListener(cb)
                          .emit("baz")
                          .addListener("bim", cb)
                          .removeListener("bim", cb)
                          .once("bop", cb)
                          .many(3, "bop", cb)
-                         .removeAllListeners())
+                         .removeAllListeners(),
+                        emitter)
 
-            if (constructor == ExampleEmitter) {
+            if (constructor == PEV.EventEmitter) {
 
-                assert.equal(emitter,
-                             emitter
-                             ._fireListeners("bar"))
+                assert.equal(emitter._fireListeners("bar"), emitter)
 
-            } else if (constructor == ExamplePervasiveEmitter) {
+            } else if (constructor == PEV.PervasiveEmitter) {
 
-                assert.equal(emitter,
-                             emitter
+                assert.equal(emitter
                              ._fireSameWindowListeners("bar")
-                             ._fireOtherWindowListeners("bar"))
+                             ._fireOtherWindowListeners("bar"),
+                            emitter)
 
             }
+
+            cleanupByConstructor(constructor, emitter)
+        })
+    }
+)
+
+
+QUnit.test(
+    "Generated events have expected fields.",
+
+    function(assert) {
+        var emitter = new PEV.EventEmitter()
+        var details = {bar: "baz"}
+        var event = emitter._createEvent("foo", details)
+
+        assert.equal(event.type, "simpleEvent")
+        assert.equal(event.eventName, "foo")
+        assert.deepEqual(event.details, details)
+        assert.equal(typeof(event.createdAtUnix), "number")
+        assert.equal(typeof(event.createdAtIso), "string")
+
+        cleanupByConstructor(PEV.EventEmitter, emitter)
+    }
+)
+
+QUnit.test(
+    "Creating an event with no details results in {} details instead of undefined.",
+
+    function(assert) {
+        var emitter = new PEV.EventEmitter()
+        var event = emitter._createEvent("foo")
+
+        assert.deepEqual(event.details, {})
+
+        cleanupByConstructor(PEV.EventEmitter, emitter)
+    }
+)
+
+
+QUnit.test(
+    "on -> emit -> event received pipeline",
+
+    function(assert) {
+        var emitters = ALL_EMITTERS
+        assert.expect(emitters.length * 5)
+        emitters.forEach(function(constructor) {
+            if (constructor == PEV.PervasiveEmitter) {
+                var emitter = new constructor("this test specifically")
+            } else {
+                var emitter = new constructor()
+            }
+            var done = assert.async()
+            var received = []
+
+            emitter.removeAllListeners()
+
+            emitter.on("foo", function(evt) {
+                received.push(evt)
+            })
+
+            emitter.emit("foo")
+            emitter.emit("foo", {which: 2})
+            emitter.emit("foo")
+
+            var checks = 0
+            var checkTimeout = 50
+            var maxChecks = 40
+            var checker = setInterval(function() {
+                if (received.length >= 3 || checks++ > maxChecks) {
+                    window.clearInterval(checker)
+
+                    assert.equal(received.length, 3)
+
+                    var detailsList = received.map(function(x) { return x.details })
+
+                    // console.log("detailsList: " + JSON.stringify(detailsList))
+                    // console.log("dl0: " + detailsList[0])
+                    // console.log("dl1: " + detailsList[1])
+                    // console.log("dl2: " + detailsList[2])
+
+                    assert.equal(detailsList.length, 3)
+                    assert.deepEqual(detailsList[0], {})
+                    assert.deepEqual(detailsList[1], {which: 2})
+                    assert.deepEqual(detailsList[2], {})
+
+                    cleanupByConstructor(constructor, emitter)
+
+                    done()
+                }
+            }, checkTimeout)
         })
     }
 )
