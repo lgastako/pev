@@ -77,8 +77,8 @@
                 try {
                     listener(event)
                 } catch (ex) {
-                    console.log("aborted: %o", ex)
-                    aborted = true
+                    console.log(ex)
+                    // aborted = true
                 }
 
             })
@@ -139,6 +139,175 @@
             this.many(1, eventName, cb)
             return this
         }
+    }
+
+    function findTopWindow() {
+        var myWindow = window
+        var w = myWindow
+        while (w.parent != w) {
+            w = w.parent
+        }
+        return w
+    }
+
+    function findOrCreateFrameId() {
+        var frameId = window.__tabbus_frameId || generateUUIDv4()
+        window.__tabbus_frameId = frameId
+        return frameId
+    }
+
+    function TabBus() {
+        var settings = {}
+        EventEmitter.call(this, settings)
+
+        this.topWindow = findTopWindow()
+        this.isServer = window == this.topWindow
+        this._attachedWindows = []
+
+        this.frameId = findOrCreateFrameId()
+
+        this.rebroadcast = function(envelope) {
+            console.log("REBROADCASTing to " + this._attachedWindows.length + " clients.")
+            console.log("REBROADCAST is of: " + JSON.stringify(envelope))
+            // TODO or NOT TODO: filter out the source window from rebroadcasts?
+
+            this._attachedWindows.forEach(function(targetWindow) {
+                targetWindow.postMessage(envelope, '*')
+            })
+        }
+
+        this._handleNewConnection = function(event) {
+            console.log("_handleNewConnection")
+            var targetWindow = event.source
+            this._attachedWindows.push(targetWindow)
+        }
+
+        this._handleDisconnection = function(event) {
+            console.log("_handleDisconnection")
+            var targetWindow = event.source
+            var index = this._attachedWindows.indexOf(targetWindow)
+            if (index > -1) {
+                this._attachedWindows.splice(index, 1)
+            }
+        }
+
+        this._emitEnvelope = function(envelope) {
+            this.emit("envelope", envelope)
+            this.emit("message", envelope.msg)
+        }
+
+        this._handleNormalMessage = function(envelope) {
+            // Fire local handlers
+            // if (envelope.frameId != this.frameId) {
+            //     this.emit("message", envelope)
+            // } else {
+            //     console.log("skipping message since envelope.frameId("
+            //                 + envelope.frameId
+            //                 + ") does is this.frameId("
+            //                 + this.frameId
+            //                 + ")")
+            // }
+
+            // Fire local handlers
+            this._emitEnvelope(envelope)
+
+            // Fire remote handlers
+            this.rebroadcast(envelope)
+        }
+
+        function isTabBusMessage(envelope) {
+            return !!envelope.frameId
+        }
+
+        this._startServer = function() {
+            var that = this
+            window.addEventListener("message", function(event) {
+                var envelope = event.data
+
+                if (!isTabBusMessage(envelope)) {
+                    return
+                } else if (envelope.messageType == "connect") {
+                    that._handleNewConnection(event)
+                } else if (envelope.messageType == "disconnect") {
+                    that._handleDisconnection(event)
+                } else {
+                    that._handleNormalMessage(envelope)
+                }
+            }, false)
+        }
+
+        this._sendConnect = function() {
+            console.log("_sendConnect BEGIN")
+            var envelope = this._createEnvelope()
+            envelope.messageType = "connect"
+            tryPostMessage(this.topWindow, envelope)
+            console.log("_sendConnect END")
+        }
+
+        this._sendDisconnect = function() {
+            var msg = {}
+            var envelope = this._createEnvelope()
+            envelope.messageType = "disconnect"
+            tryPostMessage(this.topWindow, envelope)
+        }
+
+        this._startClient = function() {
+            console.log("Starting client...")
+            var that = this
+            window.addEventListener("message", function(event) {
+                var envelope = event.data
+                if (!isTabBusMessage(envelope)) return
+
+                that._emitEnvelope(envelope)
+            })
+            this._sendConnect()
+            console.log("Started client...")
+        }
+
+        this._createEnvelope = function(msg) {
+            msg = msg || {}
+            var msgId = generateUUIDv4()
+            var envelope = {
+                msgId: msgId,
+                frameId: this.frameId,
+                msg: msg,
+                messageType: "default"
+            }
+            return envelope
+        }
+
+        function tryPostMessage(targetWindow, envelope) {
+            try {
+                targetWindow.postMessage(envelope, '*')
+            } catch (ex) {
+                console.log("failed to postMessage")
+                console.log(ex)
+            }
+        }
+
+        this.send = function(msg) {
+            // Whether we are on the client or the server, we simply post the
+            // message to the top window, in both cases the server will get it
+            // and respond, redistributing it to every window except the one it
+            // came from
+            var envelope = this._createEnvelope(msg)
+            tryPostMessage(this.topWindow, envelope)
+        }
+
+        this.disconnect = function() {
+            throw new Error("Not Implemented Yet")
+            this._sendDisconnect()
+        }
+
+        if (this.isServer) {
+            this._startServer()
+        } else {
+            this._startClient()
+        }
+    }
+
+    function connectToTabBus() {
+        return new TabBus()
     }
 
     function TabEmitter(settings) {
@@ -302,6 +471,9 @@
 
     window.PEV = {
         EventEmitter: EventEmitter,
+        TabBus: {
+            connect: connectToTabBus
+        },
         TabEmitter: TabEmitter,
         PervasiveEmitter: PervasiveEmitter
     }
